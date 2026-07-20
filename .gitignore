@@ -1,0 +1,10 @@
+.DS_Store
+.vscode/
+.worktrees/
+node_modules/
+out/
+dist/
+release/
+*.tsbuildinfo
+electron-builder.yml
+npm-debug.log*
