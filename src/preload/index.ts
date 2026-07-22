@@ -1,9 +1,13 @@
-import path from 'node:path'
 import { Buffer } from 'node:buffer'
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ExportPayload, InkstoneAPI, MenuCommand } from '../shared/types'
+import { resolveAssetPath } from './paths'
+import type { DesktopPlatform, ExportPayload, InkstoneAPI, MenuCommand } from '../shared/types'
+
+const platform: DesktopPlatform = process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux'
 
 const api: InkstoneAPI = {
+  platform,
+  setTitleBarTheme: (theme) => ipcRenderer.send('window:set-title-bar-theme', theme),
   chooseDocuments: () => ipcRenderer.invoke('documents:choose'),
   readPaths: (paths) => ipcRenderer.invoke('documents:read-paths', paths),
   openRelative: (documentPath, source) => ipcRenderer.invoke('documents:open-relative', documentPath, source),
@@ -26,8 +30,7 @@ const api: InkstoneAPI = {
   openExternal: (url) => ipcRenderer.invoke('shell:open-external', url),
   resolveAsset: (documentPath, source) => {
     if (!documentPath || /^(https?:|data:|blob:|inkstone-local:|#)/i.test(source)) return source
-    const decoded = decodeURIComponent(source.replace(/^file:\/\//i, ''))
-    const resolved = path.isAbsolute(decoded) ? decoded : path.resolve(path.dirname(documentPath), decoded)
+    const resolved = resolveAssetPath(documentPath, source, platform)
     return `inkstone-local://file/${Buffer.from(resolved).toString('base64url')}`
   },
   onMenuCommand: (callback) => {

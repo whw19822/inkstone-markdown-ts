@@ -14,6 +14,7 @@ import {
 } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../Resources/AppIcon.png?asset'
+import { validRenameName, viewAccelerators } from './platform'
 import type {
   CloseDecision,
   ExportPayload,
@@ -36,6 +37,13 @@ let mainWindow: BrowserWindow | null = null
 let allowWindowClose = false
 let pendingExternalPaths: string[] = []
 const supportedExtensions = new Set<string>(markdownExtensions)
+const titleBarHeight = 48
+
+function titleBarOverlay(theme: 'light' | 'dark'): Electron.TitleBarOverlay {
+  return theme === 'dark'
+    ? { color: '#24211e', symbolColor: '#e9e4de', height: titleBarHeight }
+    : { color: '#f3f0eb', symbolColor: '#5f5b55', height: titleBarHeight }
+}
 
 function sendCommand(command: MenuCommand): void {
   mainWindow?.webContents.send('menu:command', command)
@@ -47,6 +55,7 @@ function menuItem(label: string, accelerator: string | undefined, command: MenuC
 
 function installApplicationMenu(): void {
   const isMac = process.platform === 'darwin'
+  const accelerators = viewAccelerators(isMac)
   const template: MenuItemConstructorOptions[] = []
   if (isMac) {
     template.push({
@@ -123,12 +132,12 @@ function installApplicationMenu(): void {
     {
       label: 'View',
       submenu: [
-        menuItem('Editor', 'CmdOrCtrl+Control+1', 'layout-editor'),
-        menuItem('Split View', 'CmdOrCtrl+Control+2', 'layout-split'),
-        menuItem('Reader', 'CmdOrCtrl+Control+3', 'layout-preview'),
+        menuItem('Editor', accelerators.editor, 'layout-editor'),
+        menuItem('Split View', accelerators.split, 'layout-split'),
+        menuItem('Reader', accelerators.reader, 'layout-preview'),
         { type: 'separator' },
         menuItem('Toggle Outline', 'CmdOrCtrl+Alt+L', 'toggle-outline'),
-        menuItem('Toggle Sidebar', 'CmdOrCtrl+Control+S', 'toggle-sidebar'),
+        menuItem('Toggle Sidebar', accelerators.sidebar, 'toggle-sidebar'),
         { type: 'separator' },
         { role: 'reload' },
         { role: 'toggleDevTools' },
@@ -168,7 +177,7 @@ function createWindow(): void {
     titleBarOverlay:
       process.platform === 'darwin'
         ? false
-        : { color: '#f7f5f2', symbolColor: '#5f5b55', height: 48 },
+        : titleBarOverlay('light'),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.mjs'),
@@ -363,6 +372,10 @@ function mimeTypeForPath(filePath: string): string {
 }
 
 function registerIpcHandlers(): void {
+  ipcMain.on('window:set-title-bar-theme', (_event, theme: 'light' | 'dark') => {
+    if (process.platform === 'darwin' || (theme !== 'light' && theme !== 'dark')) return
+    mainWindow?.setTitleBarOverlay(titleBarOverlay(theme))
+  })
   ipcMain.handle('documents:choose', async (): Promise<OpenedFile[]> => {
     const response = await dialog.showOpenDialog(mainWindow!, {
       properties: ['openFile', 'multiSelections'],
@@ -410,8 +423,8 @@ function registerIpcHandlers(): void {
     return { path: candidate, name: path.basename(candidate), text }
   })
   ipcMain.handle('workspace:rename', async (_event, targetPath: string, newName: string): Promise<string | null> => {
-    const cleanName = newName.trim()
-    if (!cleanName || cleanName.includes(path.sep)) return null
+    const cleanName = validRenameName(newName, process.platform)
+    if (!cleanName) return null
     const destination = path.join(path.dirname(targetPath), cleanName)
     if (await fs.access(destination).then(() => true).catch(() => false)) throw new Error(`An item named ${cleanName} already exists.`)
     await fs.rename(targetPath, destination)
