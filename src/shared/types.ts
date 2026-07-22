@@ -3,6 +3,7 @@ export const markdownExtensions = ['md', 'markdown', 'mdown', 'mkd', 'txt'] as c
 export type EditorLayout = 'editor' | 'split' | 'preview'
 export type Theme = 'system' | 'light' | 'dark'
 export type Typeface = 'system' | 'serif' | 'monospace'
+export type DesktopPlatform = 'macos' | 'windows' | 'linux'
 export type MenuCommand =
   | 'new-document'
   | 'new-workspace-file'
@@ -90,6 +91,8 @@ export interface EditorSettings {
 export type CloseDecision = 'save' | 'discard' | 'cancel'
 
 export interface InkstoneAPI {
+  readonly platform: DesktopPlatform
+  setTitleBarTheme(theme: 'light' | 'dark'): void
   chooseDocuments(): Promise<OpenedFile[]>
   readPaths(paths: string[]): Promise<OpenedFile[]>
   openRelative(documentPath: string, source: string): Promise<OpenedFile | null>

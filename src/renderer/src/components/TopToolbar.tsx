@@ -32,7 +32,7 @@ export function TopToolbar(): React.JSX.Element {
   const hasDocument = useWorkspaceStore((state) => state.selectedId !== null)
 
   return (
-    <header className="app-drag-region relative flex h-12 shrink-0 items-center border-b border-border bg-toolbar pl-[76px] pr-3">
+    <header className="top-toolbar app-drag-region relative flex h-12 shrink-0 items-center border-b border-border bg-toolbar">
       <div className="no-drag flex items-center">
         <ToolbarButton label={showSidebar ? 'Hide Sidebar' : 'Show Sidebar'} onClick={toggleSidebar}>
           {showSidebar ? <PanelLeftClose /> : <PanelLeftOpen />}

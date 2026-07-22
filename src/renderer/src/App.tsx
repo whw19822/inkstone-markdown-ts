@@ -25,6 +25,7 @@ export function App(): React.JSX.Element {
       const dark = settings.theme === 'dark' || (settings.theme === 'system' && media.matches)
       document.documentElement.classList.toggle('dark', dark)
       document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+      window.inkstone.setTitleBarTheme(dark ? 'dark' : 'light')
     }
     applyTheme()
     media.addEventListener('change', applyTheme)
@@ -41,7 +42,7 @@ export function App(): React.JSX.Element {
 
   return (
     <TooltipProvider delayDuration={350}>
-      <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      <div data-platform={window.inkstone.platform} className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
         <TopToolbar />
         <div className="flex min-h-0 flex-1">
           {showSidebar && <Sidebar />}
