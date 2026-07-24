@@ -121,7 +121,7 @@ input, textarea, .cm-content, .markdown-preview { user-select: text; }
 ::-webkit-scrollbar-thumb { min-height: 32px; border: 3px solid transparent; border-radius: 10px; background: color-mix(in srgb, var(--muted-foreground) 35%, transparent); background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--muted-foreground) 55%, transparent); background-clip: content-box; }
 
-.markdown-preview article { width: min(calc(100% - 72px), 800px); min-height: 100%; margin: 0 auto; padding: 52px 0 110px; color: var(--foreground); font-family: var(--font-sans); font-size: 16px; line-height: 1.72; user-select: text; }
+.markdown-preview article { width: min(calc(100% - 72px), 800px); min-height: 100%; margin: 0 auto; padding: 52px 0 110px; overflow-wrap: anywhere; color: var(--foreground); font-family: var(--font-sans); font-size: 16px; line-height: 1.72; user-select: text; }
 .markdown-preview h1, .markdown-preview h2, .markdown-preview h3, .markdown-preview h4, .markdown-preview h5, .markdown-preview h6 { scroll-margin-top: 38px; margin: 2.05em 0 .72em; color: var(--foreground); font-family: var(--font-sans); font-weight: 700; line-height: 1.22; letter-spacing: -.025em; }
 .markdown-preview h1 { margin-top: .2em; padding-bottom: .35em; border-bottom: 1px solid var(--border); font-size: 2.25em; }
 .markdown-preview h2 { padding-bottom: .24em; border-bottom: 1px solid var(--border); font-size: 1.68em; }
@@ -154,6 +154,8 @@ input, textarea, .cm-content, .markdown-preview { user-select: text; }
 .markdown-preview tr:last-child td { border-bottom: 0; }
 .markdown-preview th { background: var(--muted); font-weight: 650; }
 .markdown-preview img { display: block; max-width: 100%; height: auto; margin: 1.5em auto; border-radius: 9px; box-shadow: 0 12px 30px color-mix(in srgb, #000 10%, transparent); }
+.markdown-preview img.markdown-html-image.align-left { margin-right: auto; margin-left: 0; }
+.markdown-preview img.markdown-html-image.align-right { margin-right: 0; margin-left: auto; }
 .markdown-preview hr { margin: 2.3em 0; border: 0; border-top: 1px solid var(--border); }
 .markdown-preview mark { border-radius: 3px; background: #e8c96b66; padding: .04em .16em; color: inherit; }
 .markdown-preview .front-matter { margin: 0 0 2em; border: 1px solid var(--border); border-radius: 8px; background: color-mix(in srgb, var(--muted) 78%, transparent); padding: .8em 1em; color: var(--muted-foreground); font: 13px/1.55 var(--font-mono); }

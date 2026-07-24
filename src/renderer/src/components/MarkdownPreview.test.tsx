@@ -42,4 +42,24 @@ describe('MarkdownPreview', () => {
     expect(html).not.toContain('<script>')
     expect(html).toContain('&lt;script&gt;alert(&quot;no&quot;)&lt;/script&gt;')
   })
+
+  it('renders a div-wrapped base64 image without enabling arbitrary HTML', () => {
+    const source = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+    const html = render(`<div align="left">
+  <img src="${source}" alt="Product card" style="zoom:80%;" />
+</div>`)
+
+    expect(html).toContain(`<img src="${source}" alt="Product card"`)
+    expect(html).toContain('class="markdown-html-image align-left"')
+    expect(html).toContain('style="width:80%"')
+    expect(html).not.toContain('&lt;div')
+  })
+
+  it('rejects non-image data URLs in HTML image markup', () => {
+    const html = render('<img src="data:text/html;base64,PHNjcmlwdD4=" alt="Unsafe" />')
+
+    expect(html).toContain('<img alt="Unsafe"')
+    expect(html).not.toContain('src=')
+    expect(html).not.toContain('data:text/html')
+  })
 })
