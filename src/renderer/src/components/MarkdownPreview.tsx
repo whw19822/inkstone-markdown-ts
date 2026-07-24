@@ -1,6 +1,6 @@
 import { createElement, forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import type { Components, ExtraProps } from 'react-markdown'
-import type { Heading, Parent, Root, Text } from 'mdast'
+import type { Heading, Image, Parent, Root, Text } from 'mdast'
 import ReactMarkdown from 'react-markdown'
 import rehypeKatex from 'rehype-katex'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
@@ -28,7 +28,12 @@ const sanitizeSchema = {
   attributes: {
     ...defaultSchema.attributes,
     code: [...(defaultSchema.attributes?.code ?? []), ['className']],
+    img: [...(defaultSchema.attributes?.img ?? []), 'className', 'dataZoom'],
     input: ['type', 'checked', 'disabled'],
+  },
+  protocols: {
+    ...defaultSchema.protocols,
+    src: [...(defaultSchema.protocols?.src ?? []), 'data'],
   },
 }
 
@@ -84,7 +89,18 @@ export const MarkdownPreview = forwardRef<PreviewHandle, MarkdownPreviewProps>(f
           }}
         >{children}</a>
       ),
-      img: ({ src, alt, node: _node, ...props }) => <img src={src} alt={alt ?? ''} loading="lazy" {...props} />,
+      img: ({ src, alt, node, ...props }) => {
+        const zoom = Number(node?.properties.dataZoom)
+        return (
+          <img
+            src={src || undefined}
+            alt={alt ?? ''}
+            loading="lazy"
+            {...props}
+            style={Number.isFinite(zoom) && zoom > 0 && zoom <= 100 ? { width: `${zoom}%` } : undefined}
+          />
+        )
+      },
       input: ({ node: _node, ...props }) => <input {...props} readOnly disabled />,
     }
   }, [onOpenRelative])
@@ -92,7 +108,7 @@ export const MarkdownPreview = forwardRef<PreviewHandle, MarkdownPreviewProps>(f
   return (
     <div
       ref={scrollRef}
-      className="markdown-preview h-full min-h-0 overflow-auto overscroll-contain bg-preview"
+      className="markdown-preview h-full min-h-0 min-w-0 overflow-auto overscroll-contain bg-preview"
       onScroll={(event) => {
         if (programmaticScroll.current) return
         const element = event.currentTarget
@@ -111,7 +127,11 @@ export const MarkdownPreview = forwardRef<PreviewHandle, MarkdownPreviewProps>(f
           remarkPlugins={[remarkGfm, remarkMath, remarkSafeHtml, remarkHeadingIds, remarkHighlight]}
           rehypePlugins={[[rehypeSanitize, sanitizeSchema], rehypeKatex]}
           components={components}
-          urlTransform={(url, key) => key === 'src' ? window.inkstone.resolveAsset(documentPath, url) : url}
+          urlTransform={(url, key) => {
+            if (key !== 'src') return url
+            if (/^data:/i.test(url)) return isSafeImageDataUrl(url) ? url : ''
+            return window.inkstone.resolveAsset(documentPath, url)
+          }}
         >
           {preparedBody}
         </ReactMarkdown>
@@ -159,12 +179,82 @@ function remarkSafeHtml(): (tree: Root) => void {
 function transformRawHtml(parent: Parent): void {
   parent.children = parent.children.flatMap((node) => {
     if (node.type === 'html') {
+      const image = imageFromSafeHtml(node.value)
+      if (image) return [image]
       if (/^<br\s*\/?>$/i.test(node.value.trim())) return [{ type: 'break' }]
       return [{ type: 'text', value: node.value }]
     }
     if ('children' in node && Array.isArray(node.children)) transformRawHtml(node as Parent)
     return [node]
   }) as Parent['children']
+}
+
+interface SafeHtmlImage {
+  source: string
+  alt: string
+  title: string | null
+  align: 'left' | 'center' | 'right'
+  zoom: number | null
+}
+
+function imageFromSafeHtml(value: string): Image | null {
+  const parsed = parseSafeHtmlImage(value)
+  if (!parsed) return null
+  return {
+    type: 'image',
+    url: parsed.source,
+    alt: parsed.alt,
+    title: parsed.title,
+    data: {
+      hProperties: {
+        className: ['markdown-html-image', `align-${parsed.align}`],
+        ...(parsed.zoom === null ? {} : { dataZoom: parsed.zoom }),
+      },
+    },
+  }
+}
+
+function parseSafeHtmlImage(value: string): SafeHtmlImage | null {
+  const wrapped = /^\s*<div\s*([^>]*)>\s*(<img\b[\s\S]*?\/?>)\s*<\/div>\s*$/i.exec(value)
+  let markup = value.trim()
+  let align: SafeHtmlImage['align'] = 'center'
+
+  if (wrapped) {
+    const divAttributes = wrapped[1]?.trim() ?? ''
+    if (divAttributes) {
+      const alignment = /^align\s*=\s*(?:"(left|center|right)"|'(left|center|right)'|(left|center|right))$/i.exec(divAttributes)
+      const value = alignment?.[1] ?? alignment?.[2] ?? alignment?.[3]
+      if (!value) return null
+      align = value.toLowerCase() as SafeHtmlImage['align']
+    }
+    markup = wrapped[2] ?? ''
+  } else if (!/^\s*<img\b[\s\S]*?\/?>\s*$/i.test(value)) {
+    return null
+  }
+
+  const source = htmlAttribute(markup, 'src')?.trim()
+  if (!source) return null
+  const style = htmlAttribute(markup, 'style') ?? ''
+  const zoomValue = /(?:^|;)\s*zoom\s*:\s*(\d+(?:\.\d+)?)%\s*(?:;|$)/i.exec(style)?.[1]
+  const zoom = zoomValue === undefined ? null : Number(zoomValue)
+
+  return {
+    source,
+    alt: htmlAttribute(markup, 'alt') ?? '',
+    title: htmlAttribute(markup, 'title'),
+    align,
+    zoom: zoom !== null && Number.isFinite(zoom) && zoom > 0 && zoom <= 100 ? zoom : null,
+  }
+}
+
+function htmlAttribute(markup: string, name: string): string | null {
+  const expression = new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i')
+  const match = expression.exec(markup)
+  return match ? (match[1] ?? match[2] ?? '') : null
+}
+
+function isSafeImageDataUrl(source: string): boolean {
+  return /^data:image\/(?:png|jpe?g|gif|webp|avif);base64,[a-z\d+/=\s]+$/i.test(source)
 }
 
 function remarkHighlight(): (tree: Root) => void {

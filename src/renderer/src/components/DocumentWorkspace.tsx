@@ -42,7 +42,7 @@ export function DocumentWorkspace(): React.JSX.Element | null {
   const format = (command: FormatCommand): void => editorRef.current?.format(command)
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col bg-editor">
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-editor">
       <DocumentTabs />
       <div className="flex min-h-0 flex-1">
         <section className="flex min-w-0 flex-1 flex-col">
