@@ -19,6 +19,9 @@
     "appId": "com.whw.inkstone",
     "productName": "Inkstone",
     "asar": true,
+    "electronDownload": {
+      "cache": ".electron-cache"
+    },
     "files": [
       "out/**/*",
       "package.json"
