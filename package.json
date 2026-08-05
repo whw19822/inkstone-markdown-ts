@@ -76,8 +76,6 @@
     "clsx": "^2.1.1",
     "katex": "^0.17.0",
     "lucide-react": "^1.25.0",
-    "marked": "^18.0.6",
-    "marked-katex-extension": "^5.1.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-markdown": "^10.1.0",
@@ -86,7 +84,10 @@
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
     "tailwind-merge": "^3.6.0",
+    "unified": "^11.0.5",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

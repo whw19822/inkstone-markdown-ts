@@ -18,7 +18,8 @@ updated: 2026-07-14
 3. [Tables](#tables)
 4. [Code and math](#code-and-math)
 5. [Links, images, and safety](#links-images-and-safety)
-6. [中文标题与 Unicode](#中文标题与-unicode)
+6. [Embedded HTML](#embedded-html)
+7. [中文标题与 Unicode](#中文标题与-unicode)
 
 ---
 
@@ -126,13 +127,34 @@ $$
 - Relative local file: [README](README.md)
 - An unsafe `javascript:` URL is intentionally shown as plain text: [do not run](javascript:alert(1))
 
-The following embedded SVG is a self-contained image test and should render without a network connection:
+The following embedded PNG is a self-contained image test and should render without a network connection:
 
-![Inkstone preview sample](data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22480%22%20height=%22160%22%20viewBox=%220%200%20480%20160%22%3E%3Crect%20width=%22480%22%20height=%22160%22%20rx=%2216%22%20fill=%22%23282726%22/%3E%3Cpath%20d=%22M48%2044h384M48%2080h280M48%20116h336%22%20stroke=%22%23e08a61%22%20stroke-width=%2212%22%20stroke-linecap=%22round%22/%3E%3Ctext%20x=%2248%22%20y=%22146%22%20fill=%22%23e9e8e4%22%20font-family=%22sans-serif%22%20font-size=%2220%22%3EInkstone%20offline%20image%20test%3C/text%3E%3C/svg%3E)
+![Inkstone preview sample](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=)
 
-Raw HTML is displayed as text rather than executed:
+## Embedded HTML
 
-<details><summary>This must not become an interactive HTML element</summary><p>Raw HTML is escaped by the renderer.</p></details>
+Safe, nested HTML should parse as real document structure in the Reader and exported files:
+
+<section class="html-fixture" data-kind="regression">
+  <details open>
+    <summary>Native disclosure</summary>
+    <p style="color:#a55331; text-align:center; position:fixed">Safe color and alignment remain; unsafe positioning is removed.</p>
+  </details>
+  <figure>
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=" alt="HTML image" style="zoom:40%">
+    <figcaption>Figure and caption parsed from raw HTML.</figcaption>
+  </figure>
+  <table aria-label="HTML support">
+    <caption>Raw HTML table</caption>
+    <thead><tr><th scope="col">Structure</th><th scope="col">Result</th></tr></thead>
+    <tbody><tr><td rowspan="2">Nested HTML</td><td>Parsed</td></tr><tr><td>Sanitized</td></tr></tbody>
+  </table>
+</section>
+
+Executable and embedded content must be removed while ordinary fallback text remains:
+
+<script>alert("must not execute")</script>
+<iframe src="https://example.com">Unsupported embed removed safely.</iframe>
 
 ## 中文标题与 Unicode
 

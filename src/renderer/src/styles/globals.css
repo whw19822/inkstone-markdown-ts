@@ -153,9 +153,28 @@ input, textarea, .cm-content, .markdown-preview { user-select: text; }
 .markdown-preview th:last-child, .markdown-preview td:last-child { border-right: 0; }
 .markdown-preview tr:last-child td { border-bottom: 0; }
 .markdown-preview th { background: var(--muted); font-weight: 650; }
+.markdown-preview caption { padding: .65em .85em; color: var(--muted-foreground); font-size: .9em; font-weight: 650; text-align: left; }
 .markdown-preview img { display: block; max-width: 100%; height: auto; margin: 1.5em auto; border-radius: 9px; box-shadow: 0 12px 30px color-mix(in srgb, #000 10%, transparent); }
 .markdown-preview img.markdown-html-image.align-left { margin-right: auto; margin-left: 0; }
 .markdown-preview img.markdown-html-image.align-right { margin-right: 0; margin-left: auto; }
+.markdown-preview [align="left"] > img { margin-right: auto; margin-left: 0; }
+.markdown-preview [align="right"] > img { margin-right: 0; margin-left: auto; }
+.markdown-preview figure { margin: 1.5em 0; }
+.markdown-preview figure > :is(img, video) { margin-bottom: .55em; }
+.markdown-preview figcaption { color: var(--muted-foreground); font-size: .9em; text-align: center; }
+.markdown-preview details:not(.front-matter) { margin: 1.35em 0; border: 1px solid var(--border); border-radius: 9px; background: color-mix(in srgb, var(--card) 72%, transparent); padding: .75em 1em; }
+.markdown-preview details:not(.front-matter) > summary { cursor: pointer; font-weight: 650; }
+.markdown-preview details:not(.front-matter)[open] > summary { margin-bottom: .7em; }
+.markdown-preview details:not(.front-matter) > :last-child { margin-bottom: 0; }
+.markdown-preview dl { margin: 0 0 1.15em; }
+.markdown-preview dt { font-weight: 700; }
+.markdown-preview dd { margin: .15em 0 .8em 1.5em; }
+.markdown-preview abbr[title] { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
+.markdown-preview kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; background: var(--muted); padding: .12em .38em; font: .84em var(--font-mono); }
+.markdown-preview small, .markdown-preview figcaption { font-size: .875em; }
+.markdown-preview audio { display: block; width: 100%; margin: 1.35em 0; }
+.markdown-preview video { display: block; max-width: 100%; height: auto; margin: 1.5em auto; border-radius: 9px; background: #000; }
+.markdown-preview progress, .markdown-preview meter { max-width: 100%; accent-color: var(--primary); }
 .markdown-preview hr { margin: 2.3em 0; border: 0; border-top: 1px solid var(--border); }
 .markdown-preview mark { border-radius: 3px; background: #e8c96b66; padding: .04em .16em; color: inherit; }
 .markdown-preview .front-matter { margin: 0 0 2em; border: 1px solid var(--border); border-radius: 8px; background: color-mix(in srgb, var(--muted) 78%, transparent); padding: .8em 1em; color: var(--muted-foreground); font: 13px/1.55 var(--font-mono); }

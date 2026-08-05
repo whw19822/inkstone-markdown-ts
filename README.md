@@ -7,11 +7,11 @@ Inkstone 是一个基于 **Electron + React + TypeScript + Tailwind CSS + shadcn
 - 工作区文件树、文件筛选、新建、重命名、移到废纸篓和系统文件管理器定位
 - 多文档标签页、未保存状态、保存、另存为和退出前确认
 - CodeMirror 6 Markdown 编辑器，支持语法高亮、行号、拼写检查和格式快捷键
-- GFM 表格、任务列表、删除线、Front Matter、数学公式和本地图片预览
+- GFM 表格、任务列表、删除线、Front Matter、数学公式、本地图片，以及经过安全清洗的原生 HTML 预览
 - 编辑器 / 实时分屏 / 阅读器三种布局，以及编辑器与预览同步滚动
-- 文档大纲和标题跳转
+- 文档大纲和标题跳转，支持 Markdown 与 HTML 标题混排
 - 系统 / 浅色 / 深色主题，字体、字号、行距等编辑器设置
-- HTML 与 PDF 导出；HTML 导出会内嵌本地图片，可离线阅读
+- HTML 与 PDF 导出；导出沿用与阅读器一致的 HTML 解析和安全规则，HTML 会内嵌本地图片以便离线阅读
 - 单实例运行和系统 Markdown 文件关联，避免重复窗口
 - macOS、Windows、Linux 打包配置
 

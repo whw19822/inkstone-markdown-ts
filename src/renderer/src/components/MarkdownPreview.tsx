@@ -1,12 +1,20 @@
 import { createElement, forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import type { Components, ExtraProps } from 'react-markdown'
-import type { Heading, Image, Parent, Root, Text } from 'mdast'
 import ReactMarkdown from 'react-markdown'
 import rehypeKatex from 'rehype-katex'
-import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
+import rehypeRaw from 'rehype-raw'
+import rehypeSanitize from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
-import { prepareMarkdown, slugify, splitFrontMatter } from '@/lib/markdown'
+import {
+  htmlSanitizeSchema,
+  rehypeHeadingIds,
+  rehypeNormalizeHtml,
+  remarkHighlight,
+  safeUrlTransform,
+  sanitizeSrcSet,
+} from '@/lib/html-rendering'
+import { prepareMarkdown, splitFrontMatter } from '@/lib/markdown'
 import { cn } from '@/lib/utils'
 
 export interface PreviewHandle {
@@ -19,22 +27,6 @@ interface MarkdownPreviewProps {
   onOpenRelative?(source: string): void
   syncedScroll?: { source: 'editor' | 'preview'; ratio: number; sequence: number }
   onScrollRatio?(ratio: number): void
-}
-
-const sanitizeSchema = {
-  ...defaultSchema,
-  clobberPrefix: '',
-  tagNames: [...(defaultSchema.tagNames ?? []), 'mark'],
-  attributes: {
-    ...defaultSchema.attributes,
-    code: [...(defaultSchema.attributes?.code ?? []), ['className']],
-    img: [...(defaultSchema.attributes?.img ?? []), 'className', 'dataZoom'],
-    input: ['type', 'checked', 'disabled'],
-  },
-  protocols: {
-    ...defaultSchema.protocols,
-    src: [...(defaultSchema.protocols?.src ?? []), 'data'],
-  },
 }
 
 export const MarkdownPreview = forwardRef<PreviewHandle, MarkdownPreviewProps>(function MarkdownPreview(
@@ -64,6 +56,10 @@ export const MarkdownPreview = forwardRef<PreviewHandle, MarkdownPreviewProps>(f
   }, [syncedScroll])
 
   const components = useMemo<Components>(() => {
+    const resolveAsset = (source: string): string => {
+      if (/^(?:data:|https?:)/i.test(source) || typeof window === 'undefined' || !window.inkstone) return source
+      return window.inkstone.resolveAsset(documentPath, source)
+    }
     const heading = (level: number) => ({ children, node: _node, ...props }: React.HTMLAttributes<HTMLHeadingElement> & ExtraProps) => {
       const tag = `h${level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
       return createElement(tag, props, children)
@@ -89,21 +85,15 @@ export const MarkdownPreview = forwardRef<PreviewHandle, MarkdownPreviewProps>(f
           }}
         >{children}</a>
       ),
-      img: ({ src, alt, node, ...props }) => {
-        const zoom = Number(node?.properties.dataZoom)
-        return (
-          <img
-            src={src || undefined}
-            alt={alt ?? ''}
-            loading="lazy"
-            {...props}
-            style={Number.isFinite(zoom) && zoom > 0 && zoom <= 100 ? { width: `${zoom}%` } : undefined}
-          />
-        )
-      },
+      img: ({ src, srcSet, alt, node: _node, ...props }) => (
+        <img src={src || undefined} srcSet={srcSet ? sanitizeSrcSet(srcSet, resolveAsset) : undefined} alt={alt ?? ''} loading="lazy" {...props} />
+      ),
+      source: ({ srcSet, node: _node, ...props }) => (
+        <source srcSet={srcSet ? sanitizeSrcSet(srcSet, resolveAsset) : undefined} {...props} />
+      ),
       input: ({ node: _node, ...props }) => <input {...props} readOnly disabled />,
     }
-  }, [onOpenRelative])
+  }, [documentPath, onOpenRelative])
 
   return (
     <div
@@ -124,13 +114,14 @@ export const MarkdownPreview = forwardRef<PreviewHandle, MarkdownPreviewProps>(f
           </details>
         )}
         <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath, remarkSafeHtml, remarkHeadingIds, remarkHighlight]}
-          rehypePlugins={[[rehypeSanitize, sanitizeSchema], rehypeKatex]}
+          remarkPlugins={[remarkGfm, remarkMath, remarkHighlight]}
+          rehypePlugins={[rehypeRaw, rehypeNormalizeHtml, rehypeHeadingIds, [rehypeSanitize, htmlSanitizeSchema], rehypeKatex]}
           components={components}
-          urlTransform={(url, key) => {
-            if (key !== 'src') return url
-            if (/^data:/i.test(url)) return isSafeImageDataUrl(url) ? url : ''
-            return window.inkstone.resolveAsset(documentPath, url)
+          urlTransform={(url, key, node) => {
+            const safeUrl = safeUrlTransform(url, key, node)
+            if (!safeUrl || (key !== 'src' && key !== 'poster') || /^(?:data:|https?:)/i.test(safeUrl)) return safeUrl
+            if (typeof window === 'undefined' || !window.inkstone) return safeUrl
+            return window.inkstone.resolveAsset(documentPath, safeUrl)
           }}
         >
           {preparedBody}
@@ -139,143 +130,3 @@ export const MarkdownPreview = forwardRef<PreviewHandle, MarkdownPreviewProps>(f
     </div>
   )
 })
-
-function remarkHeadingIds(): (tree: Root) => void {
-  return (tree) => {
-    const counts = new Map<string, number>()
-    walkMarkdown(tree, (heading) => {
-      const base = slugify(textFromMarkdown(heading))
-      const count = counts.get(base) ?? 0
-      counts.set(base, count + 1)
-      heading.data = {
-        ...heading.data,
-        hProperties: {
-          ...(heading.data?.hProperties ?? {}),
-          id: count === 0 ? base : `${base}-${count}`,
-        },
-      }
-    })
-  }
-}
-
-function walkMarkdown(node: Root | Parent, visit: (heading: Heading) => void): void {
-  for (const child of node.children) {
-    if (child.type === 'heading') visit(child)
-    if ('children' in child && Array.isArray(child.children)) walkMarkdown(child as Parent, visit)
-  }
-}
-
-function textFromMarkdown(node: Heading | Parent): string {
-  return node.children.map((child) => {
-    if (child.type === 'text' || child.type === 'inlineCode') return child.value
-    return 'children' in child && Array.isArray(child.children) ? textFromMarkdown(child as Parent) : ''
-  }).join('')
-}
-
-function remarkSafeHtml(): (tree: Root) => void {
-  return (tree) => transformRawHtml(tree)
-}
-
-function transformRawHtml(parent: Parent): void {
-  parent.children = parent.children.flatMap((node) => {
-    if (node.type === 'html') {
-      const image = imageFromSafeHtml(node.value)
-      if (image) return [image]
-      if (/^<br\s*\/?>$/i.test(node.value.trim())) return [{ type: 'break' }]
-      return [{ type: 'text', value: node.value }]
-    }
-    if ('children' in node && Array.isArray(node.children)) transformRawHtml(node as Parent)
-    return [node]
-  }) as Parent['children']
-}
-
-interface SafeHtmlImage {
-  source: string
-  alt: string
-  title: string | null
-  align: 'left' | 'center' | 'right'
-  zoom: number | null
-}
-
-function imageFromSafeHtml(value: string): Image | null {
-  const parsed = parseSafeHtmlImage(value)
-  if (!parsed) return null
-  return {
-    type: 'image',
-    url: parsed.source,
-    alt: parsed.alt,
-    title: parsed.title,
-    data: {
-      hProperties: {
-        className: ['markdown-html-image', `align-${parsed.align}`],
-        ...(parsed.zoom === null ? {} : { dataZoom: parsed.zoom }),
-      },
-    },
-  }
-}
-
-function parseSafeHtmlImage(value: string): SafeHtmlImage | null {
-  const wrapped = /^\s*<div\s*([^>]*)>\s*(<img\b[\s\S]*?\/?>)\s*<\/div>\s*$/i.exec(value)
-  let markup = value.trim()
-  let align: SafeHtmlImage['align'] = 'center'
-
-  if (wrapped) {
-    const divAttributes = wrapped[1]?.trim() ?? ''
-    if (divAttributes) {
-      const alignment = /^align\s*=\s*(?:"(left|center|right)"|'(left|center|right)'|(left|center|right))$/i.exec(divAttributes)
-      const value = alignment?.[1] ?? alignment?.[2] ?? alignment?.[3]
-      if (!value) return null
-      align = value.toLowerCase() as SafeHtmlImage['align']
-    }
-    markup = wrapped[2] ?? ''
-  } else if (!/^\s*<img\b[\s\S]*?\/?>\s*$/i.test(value)) {
-    return null
-  }
-
-  const source = htmlAttribute(markup, 'src')?.trim()
-  if (!source) return null
-  const style = htmlAttribute(markup, 'style') ?? ''
-  const zoomValue = /(?:^|;)\s*zoom\s*:\s*(\d+(?:\.\d+)?)%\s*(?:;|$)/i.exec(style)?.[1]
-  const zoom = zoomValue === undefined ? null : Number(zoomValue)
-
-  return {
-    source,
-    alt: htmlAttribute(markup, 'alt') ?? '',
-    title: htmlAttribute(markup, 'title'),
-    align,
-    zoom: zoom !== null && Number.isFinite(zoom) && zoom > 0 && zoom <= 100 ? zoom : null,
-  }
-}
-
-function htmlAttribute(markup: string, name: string): string | null {
-  const expression = new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i')
-  const match = expression.exec(markup)
-  return match ? (match[1] ?? match[2] ?? '') : null
-}
-
-function isSafeImageDataUrl(source: string): boolean {
-  return /^data:image\/(?:png|jpe?g|gif|webp|avif);base64,[a-z\d+/=\s]+$/i.test(source)
-}
-
-function remarkHighlight(): (tree: Root) => void {
-  return (tree) => transformHighlights(tree)
-}
-
-function transformHighlights(parent: Parent): void {
-  parent.children = parent.children.flatMap((node) => {
-    if ('children' in node && Array.isArray(node.children)) transformHighlights(node as Parent)
-    if (node.type !== 'text' || !node.value.includes('==')) return [node]
-    const parts: Array<Text | { type: 'emphasis'; data: { hName: 'mark' }; children: Text[] }> = []
-    const expression = /==([^=\n]+)==/g
-    let cursor = 0
-    for (const match of node.value.matchAll(expression)) {
-      const index = match.index ?? 0
-      if (index > cursor) parts.push({ type: 'text', value: node.value.slice(cursor, index) })
-      parts.push({ type: 'emphasis', data: { hName: 'mark' }, children: [{ type: 'text', value: match[1] ?? '' }] })
-      cursor = index + match[0].length
-    }
-    if (cursor === 0) return [node]
-    if (cursor < node.value.length) parts.push({ type: 'text', value: node.value.slice(cursor) })
-    return parts
-  }) as Parent['children']
-}
